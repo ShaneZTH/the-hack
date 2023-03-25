@@ -2,7 +2,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const { spawn } = require("child_process");
 const fs = require("fs");
-const passport = require("passport");
+const session = require("express-session");
 
 require("dotenv").config();
 
@@ -18,12 +18,26 @@ app.use(express.json());
 // parse requests of content-type - application/x-www-form-urlencoded
 app.use(express.urlencoded({ extended: true }));
 
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    cookie: {},
+    saveUninitialized: false,
+    proxy: true,
+    resave: false,
+  })
+);
+
+if (app.get("env") === "production") {
+  // Serve secure cookies, requires HTTPS
+  session.cookie.secure = true;
+}
+
 let scriptRouter = require("./routes/scriptHandler.js");
 let userRouter = require("./routes/userHandler.js");
 
 app.use("/script", scriptRouter);
 app.use("/user", userRouter);
-
 
 app.post("/run-python", (req, res) => {
   // Save the Python file
@@ -47,23 +61,6 @@ app.post("/run-python", (req, res) => {
     console.log(`child process exited with code ${code}`);
   });
 });
-
-const session = {
-  secret: process.env.SESSION_SECRET,
-  cookie: {},
-  resave: false,
-  saveUninitialized: false,
-  proxy: true,
-  resave: false,
-};
-
-app.use(session);
-app.use(passport.session());
-
-if (app.get("env") === "production") {
-  // Serve secure cookies, requires HTTPS
-  session.cookie.secure = true;
-}
 
 app.listen(PORT, () => {
   console.log("Server is running on port 3000");
