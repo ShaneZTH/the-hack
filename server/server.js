@@ -1,0 +1,70 @@
+const express = require("express");
+const bodyParser = require("body-parser");
+const { spawn } = require("child_process");
+const fs = require("fs");
+const passport = require("passport");
+
+require("dotenv").config();
+
+const app = express();
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+
+const PORT = process.env.PORT || 8080;
+
+// parse requests of content-type - application/json
+app.use(express.json());
+
+// parse requests of content-type - application/x-www-form-urlencoded
+app.use(express.urlencoded({ extended: true }));
+
+let scriptRouter = require("./routes/scriptHandler.js");
+let userRouter = require("./routes/userHandler.js");
+
+app.use("/script", scriptRouter);
+app.use("/user", userRouter);
+
+
+app.post("/run-python", (req, res) => {
+  // Save the Python file
+  const pythonFile = req.body.pythonFile;
+  fs.writeFileSync("temp.py", pythonFile);
+
+  // Execute the Python file
+  const pythonProcess = spawn("python3", ["temp.py"]);
+
+  // Get the result of the Python file
+  pythonProcess.stdout.on("data", (data) => {
+    const result = data.toString();
+    res.send(result);
+  });
+
+  pythonProcess.stderr.on("data", (data) => {
+    console.log(`stderr: ${data}`);
+  });
+
+  pythonProcess.on("close", (code) => {
+    console.log(`child process exited with code ${code}`);
+  });
+});
+
+const session = {
+  secret: process.env.SESSION_SECRET,
+  cookie: {},
+  resave: false,
+  saveUninitialized: false,
+  proxy: true,
+  resave: false,
+};
+
+app.use(session);
+app.use(passport.session());
+
+if (app.get("env") === "production") {
+  // Serve secure cookies, requires HTTPS
+  session.cookie.secure = true;
+}
+
+app.listen(PORT, () => {
+  console.log("Server is running on port 3000");
+});
