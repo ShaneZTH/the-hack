@@ -42,10 +42,11 @@ app.use("/user", userRouter);
 app.post("/run-python", (req, res) => {
   // Save the Python file
   const pythonFile = req.body.pythonFile;
+  const parameters = req.body.parameters;
   fs.writeFileSync("temp.py", pythonFile);
 
   // Execute the Python file
-  const pythonProcess = spawn("python3", ["temp.py"]);
+  const pythonProcess = spawn("python3", ["temp.py", ...parameters]);
 
   // Get the result of the Python file
   pythonProcess.stdout.on("data", (data) => {
